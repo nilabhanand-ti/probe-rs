@@ -161,6 +161,17 @@ fn get_cmsisdap_info(device: &DeviceInfo, list_both_versions: bool) -> Vec<Debug
                 );
                 // Not a CMSIS-DAP v2 interface, skip.
                 continue;
+            } else if is_xds110(device)
+                && interface.interface_number() != XDS110_CMSIS_DAP_V2_INTERFACE
+            {
+                // The XDS110 names every interface after the probe, CMSIS-DAP included, but only
+                // its debug probe interface speaks CMSIS-DAP v2. The data port fails the packet
+                // size request.
+                tracing::trace!(
+                    "Interface {} of an XDS110 is not its CMSIS-DAP interface, skipping",
+                    interface.interface_number(),
+                );
+                continue;
             } else {
                 false
             };
@@ -561,6 +572,14 @@ pub fn open_device_from_selector(
 /// spellings/patterns looking for a match
 fn is_cmsis_dap(id: &str) -> bool {
     id.contains("CMSIS-DAP") || id.contains("CMSIS_DAP")
+}
+
+/// The interface of a TI XDS110 which speaks CMSIS-DAP v2 ("XDS110 Class Debug Probe").
+const XDS110_CMSIS_DAP_V2_INTERFACE: u8 = 2;
+
+/// TI XDS110, as on the MSPM0 and AM13E2x LaunchPads (0451:bef3, 0451:bef4).
+fn is_xds110(device: &DeviceInfo) -> bool {
+    device.vendor_id() == 0x0451 && matches!(device.product_id(), 0xbef3 | 0xbef4)
 }
 
 /// Some devices don't have a CMSIS-DAP interface string, but are still
